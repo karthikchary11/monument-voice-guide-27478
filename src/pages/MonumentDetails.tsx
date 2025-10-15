@@ -6,8 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Hotel, Navigation as NavigationIcon, Volume2, Star, Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MapPin, Hotel, Navigation as NavigationIcon, Volume2, Star, Loader2, Globe } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import ModelViewer from "@/components/ModelViewer";
 
 interface Monument {
   id: string;
@@ -17,6 +19,13 @@ interface Monument {
   location: string;
   category: string | null;
   image_url: string | null;
+  model_url?: string | null;
+  audio_english_url: string;
+  audio_hindi_url: string;
+  audio_telugu_url: string;
+  created_at: string;
+  created_by: string;
+  updated_at: string;
 }
 
 interface Recommendation {
@@ -38,6 +47,7 @@ const MonumentDetails = () => {
   const [loading, setLoading] = useState(true);
   const [audioLoading, setAudioLoading] = useState<string | null>(null);
   const [audioText, setAudioText] = useState<{ [key: string]: string }>({});
+  const [selectedLanguage, setSelectedLanguage] = useState<string>("english");
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -62,7 +72,23 @@ const MonumentDetails = () => {
       if (monumentRes.error) throw monumentRes.error;
       if (recommendationsRes.error) throw recommendationsRes.error;
 
-      setMonument(monumentRes.data);
+
+      // Hardcode model URLs for specific monuments
+      const monumentData = monumentRes.data as Monument;
+      if (monumentData.name.toLowerCase().includes("taj mahal")) {
+        monumentData.model_url = "/taj_mahal.glb";
+        monumentData.image_url = null; // Remove image to show 3D model
+      } else if (monumentData.name.toLowerCase().includes("charminar")) {
+        monumentData.model_url = "/models/charminar.glb";
+        monumentData.image_url = null; // Remove image to show 3D model
+      } else if (monumentData.name.toLowerCase().includes("qutub minar")) {
+        monumentData.model_url = "/models/qutub_minar.glb";
+        monumentData.image_url = null; // Remove image to show 3D model
+      } else if (monumentData.name.toLowerCase().includes("red fort")) {
+        monumentData.model_url = "/models/red_fort_model.glb";
+        monumentData.image_url = null; // Remove image to show 3D model
+      }
+      setMonument(monumentData);
       setRecommendations(recommendationsRes.data || []);
     } catch (error: any) {
       toast({
@@ -133,20 +159,26 @@ const MonumentDetails = () => {
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             <Card className="overflow-hidden shadow-elegant">
-              {monument.image_url && (
-                <div className="relative h-96">
+              <div className="relative h-96">
+                {monument.model_url ? (
+                  <ModelViewer
+                    src={monument.model_url}
+                    alt={monument.name}
+                    className="w-full h-full"
+                  />
+                ) : monument.image_url ? (
                   <img
                     src={monument.image_url}
                     alt={monument.name}
                     className="w-full h-full object-cover"
                   />
-                  {monument.category && (
-                    <Badge className="absolute top-4 right-4 bg-primary text-primary-foreground shadow-soft">
-                      {monument.category}
-                    </Badge>
-                  )}
-                </div>
-              )}
+                ) : null}
+                {monument.category && (
+                  <Badge className="absolute top-4 right-4 bg-primary text-primary-foreground shadow-soft">
+                    {monument.category}
+                  </Badge>
+                )}
+              </div>
               
               <CardHeader>
                 <CardTitle className="text-3xl font-bold">{monument.name}</CardTitle>
@@ -171,30 +203,41 @@ const MonumentDetails = () => {
 
                 <div>
                   <h3 className="text-lg font-semibold mb-3">Audio Guide</h3>
-                  <div className="flex flex-wrap gap-3">
-                    {["english", "hindi", "telugu"].map((lang) => (
-                      <Button
-                        key={lang}
-                        onClick={() => handleTextToSpeech(lang)}
-                        disabled={audioLoading !== null}
-                        className="gap-2 bg-secondary hover:bg-secondary/90"
-                      >
-                        {audioLoading === lang ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Volume2 className="w-4 h-4" />
-                        )}
-                        {lang.charAt(0).toUpperCase() + lang.slice(1)}
-                      </Button>
-                    ))}
-                  </div>
-                  {Object.keys(audioText).length > 0 && (
-                    <div className="mt-4 p-4 bg-muted rounded-lg">
-                      <p className="text-sm text-muted-foreground">
-                        Translated text available for: {Object.keys(audioText).join(", ")}
-                      </p>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Globe className="w-4 h-4 text-muted-foreground" />
+                      <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="english">English</SelectItem>
+                          <SelectItem value="hindi">Hindi</SelectItem>
+                          <SelectItem value="telugu">Telugu</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                  )}
+                    <Button
+                      onClick={() => handleTextToSpeech(selectedLanguage)}
+                      disabled={audioLoading !== null}
+                      className="gap-2 bg-secondary hover:bg-secondary/90"
+                    >
+                      {audioLoading === selectedLanguage ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Volume2 className="w-4 h-4" />
+                      )}
+                      Play Audio in {selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)}
+                    </Button>
+                    {audioText[selectedLanguage] && (
+                      <div className="mt-4 p-4 bg-muted rounded-lg">
+                        <h4 className="text-sm font-medium mb-2">Translated Text ({selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)}):</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {audioText[selectedLanguage]}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
