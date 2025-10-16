@@ -160,7 +160,7 @@ const AdminDashboard = () => {
       description_english: monument.description_english || "",
       description_hindi: monument.description_hindi || "",
       description_telugu: monument.description_telugu || "",
-      historical_info: monument.historical_info_english || monument.historical_info || "",
+      historical_info: monument.historical_info_english || monument.description || "",
       historical_info_english: monument.historical_info_english || "",
       historical_info_hindi: monument.historical_info_hindi || "",
       historical_info_telugu: monument.historical_info_telugu || "",
@@ -796,4 +796,17 @@ const AdminDashboard = () => {
                       <li>2. Find or upload your 3D model</li>
                       <li>3. Click on the "Embed" button</li>
                       <li>4. Copy the embed URL</li>
-                      <li>5. Add parameters: <code className="bg-muted px-1 rounded">?autostart=1&internal=
+                      <li>5. Add parameters: <code className="bg-muted px-1 rounded">?autostart=1&internal=1&tracking=0&ui_infos=0&ui_snapshots=1&ui_stop=0&ui_watermark=0</code></li>
+                    </ol>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </main>
+    </div>
+  );
+};
+
+export default AdminDashboard;
