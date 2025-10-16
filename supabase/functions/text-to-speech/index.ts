@@ -18,7 +18,7 @@ serve(async (req) => {
       throw new Error('Text and language are required');
     }
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const LOVABLE_API_KEY = "AIzaSyBFQfPxWJ6jJxBlrsmjWJz4xDyblY6E1E8";
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
