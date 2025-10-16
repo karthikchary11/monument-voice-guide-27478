@@ -138,10 +138,17 @@ const MonumentDetails = () => {
     try {
       const description = getDescriptionByLanguage(language);
       const historicalInfo = getHistoricalInfoByLanguage(language);
-      const textContent = `${monument.name}. ${description}. ${historicalInfo}`;
       
+      // If we already have the text in the selected language, use it directly
+      let textToSpeak = description;
+      if (historicalInfo) {
+        textToSpeak += `. ${historicalInfo}`;
+      }
+      
+      // For non-English languages, we still translate through the edge function
+      // to ensure proper pronunciation and natural flow
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
-        body: { text: textContent, language }
+        body: { text: textToSpeak, language }
       });
 
       if (error) throw error;
@@ -151,6 +158,7 @@ const MonumentDetails = () => {
       // Use Web Speech API to read the text
       const utterance = new SpeechSynthesisUtterance(data.translatedText);
       utterance.lang = language === 'telugu' ? 'te-IN' : language === 'hindi' ? 'hi-IN' : 'en-US';
+      utterance.rate = 0.9; // Slightly slower for better comprehension
       speechSynthesis.speak(utterance);
 
       toast({
@@ -158,9 +166,10 @@ const MonumentDetails = () => {
         description: `Playing in ${language.charAt(0).toUpperCase() + language.slice(1)}`,
       });
     } catch (error: any) {
+      console.error('Audio generation error:', error);
       toast({
         title: "Error generating audio",
-        description: error.message,
+        description: error.message || "Failed to generate audio",
         variant: "destructive",
       });
     } finally {
@@ -220,34 +229,35 @@ const MonumentDetails = () => {
               </CardHeader>
 
               <CardContent className="space-y-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Globe className="w-4 h-4 text-muted-foreground" />
+                  <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="english">English</SelectItem>
+                      <SelectItem value="hindi">हिंदी (Hindi)</SelectItem>
+                      <SelectItem value="telugu">తెలుగు (Telugu)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div>
                   <h3 className="text-lg font-semibold mb-2">Description</h3>
-                  <p className="text-muted-foreground">{getDescriptionByLanguage(selectedLanguage)}</p>
+                  <p className="text-muted-foreground whitespace-pre-line">{getDescriptionByLanguage(selectedLanguage)}</p>
                 </div>
 
                 {getHistoricalInfoByLanguage(selectedLanguage) && (
                   <div>
                     <h3 className="text-lg font-semibold mb-2">Historical Information</h3>
-                    <p className="text-muted-foreground">{getHistoricalInfoByLanguage(selectedLanguage)}</p>
+                    <p className="text-muted-foreground whitespace-pre-line">{getHistoricalInfoByLanguage(selectedLanguage)}</p>
                   </div>
                 )}
 
                 <div>
                   <h3 className="text-lg font-semibold mb-3">Audio Guide</h3>
                   <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <Globe className="w-4 h-4 text-muted-foreground" />
-                      <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="english">English</SelectItem>
-                          <SelectItem value="hindi">Hindi</SelectItem>
-                          <SelectItem value="telugu">Telugu</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                     <Button
                       onClick={() => handleTextToSpeech(selectedLanguage)}
                       disabled={audioLoading !== null}
