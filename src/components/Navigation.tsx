@@ -2,12 +2,23 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
-import { Landmark, LogOut, Upload, Home, MessageSquare } from "lucide-react";
+import { Landmark, LogOut, Home, MessageSquare, Settings } from "lucide-react";
+import { useEffect, useState } from "react";
 
 const Navigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setIsAdmin(false); return; }
+      const { data } = await supabase.from("profiles").select("role").eq("id", session.user.id).single();
+      setIsAdmin(data?.role === "admin");
+    })();
+  }, [location.pathname]);
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -18,9 +29,7 @@ const Navigation = () => {
         variant: "destructive",
       });
     } else {
-      toast({
-        title: "Logged out successfully",
-      });
+      toast({ title: "Logged out successfully" });
       navigate("/login");
     }
   };
@@ -50,16 +59,6 @@ const Navigation = () => {
               <Home className="w-4 h-4" />
               <span className="hidden sm:inline">Dashboard</span>
             </Button>
-            
-            <Button
-              variant={isActive("/upload") ? "default" : "ghost"}
-              size="sm"
-              onClick={() => navigate("/upload")}
-              className="gap-2"
-            >
-              <Upload className="w-4 h-4" />
-              <span className="hidden sm:inline">Upload</span>
-            </Button>
 
             <Button
               variant={isActive("/feedback") ? "default" : "ghost"}
@@ -70,6 +69,18 @@ const Navigation = () => {
               <MessageSquare className="w-4 h-4" />
               <span className="hidden sm:inline">Feedback</span>
             </Button>
+
+            {isAdmin && (
+              <Button
+                variant={isActive("/admin") ? "default" : "ghost"}
+                size="sm"
+                onClick={() => navigate("/admin")}
+                className="gap-2"
+              >
+                <Settings className="w-4 h-4" />
+                <span className="hidden sm:inline">Admin</span>
+              </Button>
+            )}
 
             <Button
               variant="ghost"

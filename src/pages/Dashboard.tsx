@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Navigation from "@/components/Navigation";
@@ -12,7 +12,7 @@ interface Monument {
   name: string;
   description: string;
   location: string;
-  category: string;
+  category: string | null;
   image_url: string | null;
 }
 
@@ -47,7 +47,7 @@ const Dashboard = () => {
     try {
       const { data, error } = await supabase
         .from("monuments")
-        .select("*")
+        .select("id, name, description, location, category, image_url")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -93,7 +93,7 @@ const Dashboard = () => {
           <Card className="text-center py-12">
             <CardContent>
               <p className="text-muted-foreground">
-                No monuments found. Upload an image to get started!
+                No monuments found.
               </p>
             </CardContent>
           </Card>
@@ -123,7 +123,7 @@ const Dashboard = () => {
                     </Badge>
                   )}
                 </div>
-                
+
                 <CardHeader>
                   <CardTitle className="flex items-start justify-between gap-2">
                     <span className="group-hover:text-primary transition-colors">
@@ -135,7 +135,7 @@ const Dashboard = () => {
                     {monument.location}
                   </CardDescription>
                 </CardHeader>
-                
+
                 <CardContent>
                   <p className="text-sm text-muted-foreground line-clamp-2">
                     {monument.description}

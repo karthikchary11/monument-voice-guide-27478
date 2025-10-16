@@ -28,7 +28,9 @@ const Login = () => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        navigate("/dashboard");
+        // On refresh, decide route by role
+        const { data } = await supabase.from("profiles").select("role").eq("id", session.user.id).single();
+        navigate(data?.role === "admin" ? "/admin" : "/dashboard");
       }
     };
     checkAuth();
@@ -49,12 +51,15 @@ const Login = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Welcome back!",
-        description: "You've successfully logged in.",
-      });
+      // fetch role and route
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", data.user!.id)
+        .single();
 
-      navigate("/dashboard");
+      toast({ title: "Welcome back!" });
+      navigate(profile?.role === "admin" ? "/admin" : "/dashboard");
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         const fieldErrors: Record<string, string> = {};
@@ -65,11 +70,7 @@ const Login = () => {
         });
         setErrors(fieldErrors);
       } else {
-        toast({
-          title: "Login failed",
-          description: error.message,
-          variant: "destructive",
-        });
+        toast({ title: "Login failed", description: error.message, variant: "destructive" });
       }
     } finally {
       setLoading(false);

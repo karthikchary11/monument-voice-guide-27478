@@ -14,7 +14,195 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      feedback: {
+        Row: {
+          comment: string | null
+          created_at: string | null
+          id: string
+          monument_id: string | null
+          rating: number | null
+          user_id: string | null
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          monument_id?: string | null
+          rating?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          monument_id?: string | null
+          rating?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_monument_id_fkey"
+            columns: ["monument_id"]
+            isOneToOne: false
+            referencedRelation: "monuments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      monument_images: {
+        Row: {
+          id: string
+          image_url: string
+          monument_id: string | null
+          uploaded_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          id?: string
+          image_url: string
+          monument_id?: string | null
+          uploaded_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          id?: string
+          image_url?: string
+          monument_id?: string | null
+          uploaded_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monument_images_monument_id_fkey"
+            columns: ["monument_id"]
+            isOneToOne: false
+            referencedRelation: "monuments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      monuments: {
+        Row: {
+          audio_english_url: string | null
+          audio_hindi_url: string | null
+          audio_telugu_url: string | null
+          category: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string
+          historical_info: string | null
+          id: string
+          image_url: string | null
+          location: string
+          model_url: string | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          audio_english_url?: string | null
+          audio_hindi_url?: string | null
+          audio_telugu_url?: string | null
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description: string
+          historical_info?: string | null
+          id?: string
+          image_url?: string | null
+          location: string
+          model_url?: string | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          audio_english_url?: string | null
+          audio_hindi_url?: string | null
+          audio_telugu_url?: string | null
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string
+          historical_info?: string | null
+          id?: string
+          image_url?: string | null
+          location?: string
+          model_url?: string | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string
+          full_name: string
+          id: string
+          role: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          full_name: string
+          id: string
+          role?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          role?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      recommendations: {
+        Row: {
+          contact: string | null
+          created_at: string | null
+          description: string | null
+          distance: string | null
+          id: string
+          monument_id: string | null
+          name: string
+          rating: number | null
+          type: string
+        }
+        Insert: {
+          contact?: string | null
+          created_at?: string | null
+          description?: string | null
+          distance?: string | null
+          id?: string
+          monument_id?: string | null
+          name: string
+          rating?: number | null
+          type: string
+        }
+        Update: {
+          contact?: string | null
+          created_at?: string | null
+          description?: string | null
+          distance?: string | null
+          id?: string
+          monument_id?: string | null
+          name?: string
+          rating?: number | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommendations_monument_id_fkey"
+            columns: ["monument_id"]
+            isOneToOne: false
+            referencedRelation: "monuments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

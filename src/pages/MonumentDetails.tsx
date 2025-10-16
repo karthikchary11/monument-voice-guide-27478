@@ -72,21 +72,22 @@ const MonumentDetails = () => {
       if (monumentRes.error) throw monumentRes.error;
       if (recommendationsRes.error) throw recommendationsRes.error;
 
-
-      // Hardcode model URLs for specific monuments
+      // Use model_url from database if available; fallback hardcodes for demo
       const monumentData = monumentRes.data as Monument;
-      if (monumentData.name.toLowerCase().includes("taj mahal")) {
-        monumentData.model_url = "/taj_mahal.glb";
-        monumentData.image_url = null; // Remove image to show 3D model
-      } else if (monumentData.name.toLowerCase().includes("charminar")) {
-        monumentData.model_url = "/models/charminar.glb";
-        monumentData.image_url = null; // Remove image to show 3D model
-      } else if (monumentData.name.toLowerCase().includes("qutub minar")) {
-        monumentData.model_url = "/models/qutub_minar.glb";
-        monumentData.image_url = null; // Remove image to show 3D model
-      } else if (monumentData.name.toLowerCase().includes("red fort")) {
-        monumentData.model_url = "/models/red_fort_model.glb";
-        monumentData.image_url = null; // Remove image to show 3D model
+      if (!monumentData.model_url) {
+        if (monumentData.name.toLowerCase().includes("taj mahal")) {
+          monumentData.model_url = "/models/taj_mahal.glb";
+          monumentData.image_url = null;
+        } else if (monumentData.name.toLowerCase().includes("charminar")) {
+          monumentData.model_url = "/models/charminar.glb";
+          monumentData.image_url = null;
+        } else if (monumentData.name.toLowerCase().includes("qutub minar")) {
+          monumentData.model_url = "/models/qutub_minar.glb";
+          monumentData.image_url = null;
+        } else if (monumentData.name.toLowerCase().includes("red fort")) {
+          monumentData.model_url = "/models/red_fort_model.glb";
+          monumentData.image_url = null;
+        }
       }
       setMonument(monumentData);
       setRecommendations(recommendationsRes.data || []);
