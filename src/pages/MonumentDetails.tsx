@@ -15,13 +15,7 @@ interface Monument {
   id: string;
   name: string;
   description: string;
-  description_english: string | null;
-  description_hindi: string | null;
-  description_telugu: string | null;
   historical_info: string | null;
-  historical_info_english: string | null;
-  historical_info_hindi: string | null;
-  historical_info_telugu: string | null;
   location: string;
   category: string | null;
   image_url: string | null;
@@ -109,36 +103,12 @@ const MonumentDetails = () => {
     }
   };
 
-  const getDescriptionByLanguage = (lang: string) => {
-    switch (lang) {
-      case 'hindi':
-        return monument?.description_hindi || monument?.description || '';
-      case 'telugu':
-        return monument?.description_telugu || monument?.description || '';
-      default:
-        return monument?.description_english || monument?.description || '';
-    }
-  };
-
-  const getHistoricalInfoByLanguage = (lang: string) => {
-    switch (lang) {
-      case 'hindi':
-        return monument?.historical_info_hindi || monument?.historical_info || '';
-      case 'telugu':
-        return monument?.historical_info_telugu || monument?.historical_info || '';
-      default:
-        return monument?.historical_info_english || monument?.historical_info || '';
-    }
-  };
-
   const handleTextToSpeech = async (language: string) => {
     if (!monument) return;
 
     setAudioLoading(language);
     try {
-      const description = getDescriptionByLanguage(language);
-      const historicalInfo = getHistoricalInfoByLanguage(language);
-      const textContent = `${monument.name}. ${description}. ${historicalInfo}`;
+      const textContent = `${monument.name}. ${monument.description}. ${monument.historical_info || ''}`;
       
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: { text: textContent, language }
@@ -222,13 +192,13 @@ const MonumentDetails = () => {
               <CardContent className="space-y-6">
                 <div>
                   <h3 className="text-lg font-semibold mb-2">Description</h3>
-                  <p className="text-muted-foreground">{getDescriptionByLanguage(selectedLanguage)}</p>
+                  <p className="text-muted-foreground">{monument.description}</p>
                 </div>
 
-                {getHistoricalInfoByLanguage(selectedLanguage) && (
+                {monument.historical_info && (
                   <div>
                     <h3 className="text-lg font-semibold mb-2">Historical Information</h3>
-                    <p className="text-muted-foreground">{getHistoricalInfoByLanguage(selectedLanguage)}</p>
+                    <p className="text-muted-foreground">{monument.historical_info}</p>
                   </div>
                 )}
 

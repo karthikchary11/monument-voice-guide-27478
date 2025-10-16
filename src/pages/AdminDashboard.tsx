@@ -28,13 +28,7 @@ interface Monument {
   id: string;
   name: string;
   description: string;
-  description_english: string | null;
-  description_hindi: string | null;
-  description_telugu: string | null;
   historical_info: string | null;
-  historical_info_english: string | null;
-  historical_info_hindi: string | null;
-  historical_info_telugu: string | null;
   location: string;
   category: string | null;
   image_url: string | null;
@@ -45,19 +39,6 @@ interface Monument {
   created_at: string;
   created_by: string;
   updated_at: string;
-}
-
-interface Recommendation {
-  id?: string;
-  monument_id?: string;
-  type: string;
-  name: string;
-  description: string;
-  distance: string;
-  rating: number | string;
-  contact: string;
-  created_at?: string;
-  created_by?: string;
 }
 
 const AdminDashboard = () => {
@@ -73,13 +54,7 @@ const AdminDashboard = () => {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    description_english: "",
-    description_hindi: "",
-    description_telugu: "",
     historical_info: "",
-    historical_info_english: "",
-    historical_info_hindi: "",
-    historical_info_telugu: "",
     location: "",
     category: "",
     image_url: "",
@@ -88,10 +63,6 @@ const AdminDashboard = () => {
     audio_hindi_url: "",
     audio_telugu_url: ""
   });
-
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([
-    { type: "nearby_place", name: "", description: "", distance: "", rating: "", contact: "" }
-  ]);
 
   useEffect(() => {
     const guardAndLoad = async () => {
@@ -134,7 +105,7 @@ const AdminDashboard = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setMonuments((data || []) as Monument[]);
+      setMonuments(data || []);
     } catch (error: any) {
       toast({
         title: "Error loading monuments",
@@ -152,13 +123,7 @@ const AdminDashboard = () => {
     setFormData({
       name: "",
       description: "",
-      description_english: "",
-      description_hindi: "",
-      description_telugu: "",
       historical_info: "",
-      historical_info_english: "",
-      historical_info_hindi: "",
-      historical_info_telugu: "",
       location: "",
       category: "",
       image_url: "",
@@ -167,24 +132,15 @@ const AdminDashboard = () => {
       audio_hindi_url: "",
       audio_telugu_url: ""
     });
-    setRecommendations([
-      { type: "nearby_place", name: "", description: "", distance: "", rating: "", contact: "" }
-    ]);
   };
 
-  const handleEdit = async (monument: Monument) => {
+  const handleEdit = (monument: Monument) => {
     setEditingMonument(monument);
     setIsCreating(false);
     setFormData({
       name: monument.name,
       description: monument.description,
-      description_english: monument.description_english || "",
-      description_hindi: monument.description_hindi || "",
-      description_telugu: monument.description_telugu || "",
       historical_info: monument.historical_info || "",
-      historical_info_english: monument.historical_info_english || "",
-      historical_info_hindi: monument.historical_info_hindi || "",
-      historical_info_telugu: monument.historical_info_telugu || "",
       location: monument.location,
       category: monument.category || "",
       image_url: monument.image_url || "",
@@ -193,20 +149,6 @@ const AdminDashboard = () => {
       audio_hindi_url: monument.audio_hindi_url || "",
       audio_telugu_url: monument.audio_telugu_url || ""
     });
-
-    // Fetch existing recommendations
-    const { data: existingRecs } = await supabase
-      .from("recommendations")
-      .select("*")
-      .eq("monument_id", monument.id);
-    
-    if (existingRecs && existingRecs.length > 0) {
-      setRecommendations(existingRecs);
-    } else {
-      setRecommendations([
-        { type: "nearby_place", name: "", description: "", distance: "", rating: "", contact: "" }
-      ]);
-    }
   };
 
   const handleSave = async () => {
@@ -227,13 +169,7 @@ const AdminDashboard = () => {
       const monumentData = {
         name: formData.name,
         description: formData.description,
-        description_english: formData.description_english || null,
-        description_hindi: formData.description_hindi || null,
-        description_telugu: formData.description_telugu || null,
         historical_info: formData.historical_info || null,
-        historical_info_english: formData.historical_info_english || null,
-        historical_info_hindi: formData.historical_info_hindi || null,
-        historical_info_telugu: formData.historical_info_telugu || null,
         location: formData.location,
         category: formData.category || null,
         image_url: formData.image_url || null,
@@ -245,17 +181,12 @@ const AdminDashboard = () => {
         updated_at: new Date().toISOString()
       };
 
-      let monumentId: string;
-
       if (isCreating) {
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from("monuments")
-          .insert([monumentData])
-          .select()
-          .single();
+          .insert([monumentData]);
 
         if (error) throw error;
-        monumentId = data.id;
         
         toast({
           title: "Success",
@@ -268,51 +199,11 @@ const AdminDashboard = () => {
           .eq("id", editingMonument.id);
 
         if (error) throw error;
-        monumentId = editingMonument.id;
-
-        // Delete existing recommendations
-        await supabase
-          .from("recommendations")
-          .delete()
-          .eq("monument_id", editingMonument.id);
         
         toast({
           title: "Success",
           description: "Monument updated successfully",
         });
-      } else {
-        return;
-      }
-
-      // Save recommendations
-      const validRecommendations = recommendations.filter(
-        rec => rec.name.trim() !== ""
-      );
-
-      if (validRecommendations.length > 0) {
-        const recsToInsert = validRecommendations.map(rec => ({
-          monument_id: monumentId,
-          type: rec.type,
-          name: rec.name,
-          description: rec.description || null,
-          distance: rec.distance || null,
-          rating: rec.rating ? parseFloat(rec.rating.toString()) : null,
-          contact: rec.contact || null,
-          created_by: user.id
-        }));
-
-        const { error: recError } = await supabase
-          .from("recommendations")
-          .insert(recsToInsert);
-
-        if (recError) {
-          console.error("Error saving recommendations:", recError);
-          toast({
-            title: "Warning",
-            description: "Monument saved but recommendations failed to save",
-            variant: "destructive",
-          });
-        }
       }
 
       setEditingMonument(null);
@@ -433,78 +324,26 @@ const AdminDashboard = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Descriptions (Multilingual)</h3>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="description_english">English Description *</Label>
-                      <Textarea
-                        id="description_english"
-                        value={formData.description_english}
-                        onChange={(e) => setFormData({ ...formData, description_english: e.target.value })}
-                        placeholder="Brief description in English"
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="description_hindi">Hindi Description</Label>
-                      <Textarea
-                        id="description_hindi"
-                        value={formData.description_hindi}
-                        onChange={(e) => setFormData({ ...formData, description_hindi: e.target.value })}
-                        placeholder="हिंदी में विवरण"
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="description_telugu">Telugu Description</Label>
-                      <Textarea
-                        id="description_telugu"
-                        value={formData.description_telugu}
-                        onChange={(e) => setFormData({ ...formData, description_telugu: e.target.value })}
-                        placeholder="తెలుగులో వివరణ"
-                        rows={3}
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description *</Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      placeholder="Brief description of the monument"
+                      rows={3}
+                    />
                   </div>
 
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Historical Information (Multilingual)</h3>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="historical_info_english">English Historical Info</Label>
-                      <Textarea
-                        id="historical_info_english"
-                        value={formData.historical_info_english}
-                        onChange={(e) => setFormData({ ...formData, historical_info_english: e.target.value })}
-                        placeholder="Historical background in English"
-                        rows={4}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="historical_info_hindi">Hindi Historical Info</Label>
-                      <Textarea
-                        id="historical_info_hindi"
-                        value={formData.historical_info_hindi}
-                        onChange={(e) => setFormData({ ...formData, historical_info_hindi: e.target.value })}
-                        placeholder="हिंदी में ऐतिहासिक जानकारी"
-                        rows={4}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="historical_info_telugu">Telugu Historical Info</Label>
-                      <Textarea
-                        id="historical_info_telugu"
-                        value={formData.historical_info_telugu}
-                        onChange={(e) => setFormData({ ...formData, historical_info_telugu: e.target.value })}
-                        placeholder="తెలుగులో చారిత్రక సమాచారం"
-                        rows={4}
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="historical_info">Historical Information</Label>
+                    <Textarea
+                      id="historical_info"
+                      value={formData.historical_info}
+                      onChange={(e) => setFormData({ ...formData, historical_info: e.target.value })}
+                      placeholder="Historical background and significance"
+                      rows={4}
+                    />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -563,127 +402,34 @@ const AdminDashboard = () => {
                     </div>
                   )}
 
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold">Nearby Places & Hotels</h3>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setRecommendations([...recommendations, { type: "nearby_place", name: "", description: "", distance: "", rating: "", contact: "" }])}
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Place
-                      </Button>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="audio_english_url">English Audio URL</Label>
+                      <Input
+                        id="audio_english_url"
+                        value={formData.audio_english_url}
+                        onChange={(e) => setFormData({ ...formData, audio_english_url: e.target.value })}
+                        placeholder="https://example.com/audio-en.mp3"
+                      />
                     </div>
-
-                    {recommendations.map((rec, index) => (
-                      <Card key={index} className="p-4">
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <Select 
-                              value={rec.type} 
-                              onValueChange={(value) => {
-                                const newRecs = [...recommendations];
-                                newRecs[index].type = value;
-                                setRecommendations(newRecs);
-                              }}
-                            >
-                              <SelectTrigger className="w-40">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="nearby_place">Nearby Place</SelectItem>
-                                <SelectItem value="hotel">Hotel</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                const newRecs = recommendations.filter((_, i) => i !== index);
-                                setRecommendations(newRecs.length > 0 ? newRecs : [{ type: "nearby_place", name: "", description: "", distance: "", rating: "", contact: "" }]);
-                              }}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Name *</Label>
-                              <Input
-                                value={rec.name}
-                                onChange={(e) => {
-                                  const newRecs = [...recommendations];
-                                  newRecs[index].name = e.target.value;
-                                  setRecommendations(newRecs);
-                                }}
-                                placeholder="Place/Hotel name"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Distance</Label>
-                              <Input
-                                value={rec.distance}
-                                onChange={(e) => {
-                                  const newRecs = [...recommendations];
-                                  newRecs[index].distance = e.target.value;
-                                  setRecommendations(newRecs);
-                                }}
-                                placeholder="e.g., 2 km"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label>Description</Label>
-                            <Textarea
-                              value={rec.description}
-                              onChange={(e) => {
-                                const newRecs = [...recommendations];
-                                newRecs[index].description = e.target.value;
-                                setRecommendations(newRecs);
-                              }}
-                              placeholder="Brief description"
-                              rows={2}
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Rating (1-5)</Label>
-                              <Input
-                                type="number"
-                                min="1"
-                                max="5"
-                                step="0.1"
-                                value={rec.rating}
-                                onChange={(e) => {
-                                  const newRecs = [...recommendations];
-                                  newRecs[index].rating = e.target.value;
-                                  setRecommendations(newRecs);
-                                }}
-                                placeholder="4.5"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Contact</Label>
-                              <Input
-                                value={rec.contact}
-                                onChange={(e) => {
-                                  const newRecs = [...recommendations];
-                                  newRecs[index].contact = e.target.value;
-                                  setRecommendations(newRecs);
-                                }}
-                                placeholder="Phone/Email"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
+                    <div className="space-y-2">
+                      <Label htmlFor="audio_hindi_url">Hindi Audio URL</Label>
+                      <Input
+                        id="audio_hindi_url"
+                        value={formData.audio_hindi_url}
+                        onChange={(e) => setFormData({ ...formData, audio_hindi_url: e.target.value })}
+                        placeholder="https://example.com/audio-hi.mp3"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="audio_telugu_url">Telugu Audio URL</Label>
+                      <Input
+                        id="audio_telugu_url"
+                        value={formData.audio_telugu_url}
+                        onChange={(e) => setFormData({ ...formData, audio_telugu_url: e.target.value })}
+                        placeholder="https://example.com/audio-te.mp3"
+                      />
+                    </div>
                   </div>
 
                   <div className="flex gap-2">
