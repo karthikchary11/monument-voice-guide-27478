@@ -25,10 +25,10 @@ interface Monument {
   location: string;
   category: string | null;
   image_url: string | null;
-  model_url: string | null;
-  audio_english_url: string | null;
-  audio_hindi_url: string | null;
-  audio_telugu_url: string | null;
+  model_url?: string | null;
+  audio_english_url: string;
+  audio_hindi_url: string;
+  audio_telugu_url: string;
   created_at: string;
   created_by: string;
   updated_at: string;
@@ -45,7 +45,7 @@ interface Recommendation {
 }
 
 const MonumentDetails = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [monument, setMonument] = useState<Monument | null>(null);
@@ -64,6 +64,7 @@ const MonumentDetails = () => {
       }
       fetchMonumentDetails();
     };
+
     checkAuth();
   }, [id, navigate]);
 
@@ -73,15 +74,33 @@ const MonumentDetails = () => {
         supabase.from("monuments").select("*").eq("id", id).single(),
         supabase.from("recommendations").select("*").eq("monument_id", id),
       ]);
+
       if (monumentRes.error) throw monumentRes.error;
       if (recommendationsRes.error) throw recommendationsRes.error;
 
-      setMonument(monumentRes.data as Monument);
+      // Use model_url from database if available; fallback hardcodes for demo
+      const monumentData = monumentRes.data as Monument;
+      if (!monumentData.model_url) {
+        if (monumentData.name.toLowerCase().includes("taj mahal")) {
+          monumentData.model_url = "/models/taj_mahal.glb";
+          monumentData.image_url = null;
+        } else if (monumentData.name.toLowerCase().includes("charminar")) {
+          monumentData.model_url = "/models/charminar.glb";
+          monumentData.image_url = null;
+        } else if (monumentData.name.toLowerCase().includes("qutub minar")) {
+          monumentData.model_url = "/models/qutub_minar.glb";
+          monumentData.image_url = null;
+        } else if (monumentData.name.toLowerCase().includes("red fort")) {
+          monumentData.model_url = "/models/red_fort_model.glb";
+          monumentData.image_url = null;
+        }
+      }
+      setMonument(monumentData);
       setRecommendations(recommendationsRes.data || []);
     } catch (error: any) {
       toast({
         title: "Error loading monument details",
-        description: error.message || "Failed to fetch data",
+        description: error.message,
         variant: "destructive",
       });
       navigate("/dashboard");
@@ -92,86 +111,56 @@ const MonumentDetails = () => {
 
   const getDescriptionByLanguage = (lang: string) => {
     switch (lang) {
-      case "hindi":
-        return monument?.description_hindi || monument?.description_english || monument?.description || "";
-      case "telugu":
-        return monument?.description_telugu || monument?.description_english || monument?.description || "";
+      case 'hindi':
+        return monument?.description_hindi || monument?.description || '';
+      case 'telugu':
+        return monument?.description_telugu || monument?.description || '';
       default:
-        return monument?.description_english || monument?.description || "";
+        return monument?.description_english || monument?.description || '';
     }
   };
 
   const getHistoricalInfoByLanguage = (lang: string) => {
     switch (lang) {
-      case "hindi":
-        return monument?.historical_info_hindi || monument?.historical_info_english || monument?.historical_info || "";
-      case "telugu":
-        return monument?.historical_info_telugu || monument?.historical_info_english || monument?.historical_info || "";
+      case 'hindi':
+        return monument?.historical_info_hindi || monument?.historical_info || '';
+      case 'telugu':
+        return monument?.historical_info_telugu || monument?.historical_info || '';
       default:
-        return monument?.historical_info_english || monument?.historical_info || "";
+        return monument?.historical_info_english || monument?.historical_info || '';
     }
   };
 
-  const handleAudioPlayback = async (language: string) => {
+  const handleTextToSpeech = async (language: string) => {
     if (!monument) return;
+
     setAudioLoading(language);
     try {
-      let audioUrl: string | null = null;
-      switch (language) {
-        case "english":
-          audioUrl = monument.audio_english_url;
-          break;
-        case "hindi":
-          audioUrl = monument.audio_hindi_url;
-          break;
-        case "telugu":
-          audioUrl = monument.audio_telugu_url;
-          break;
-      }
+      const description = getDescriptionByLanguage(language);
+      const historicalInfo = getHistoricalInfoByLanguage(language);
+      const textContent = `${monument.name}. ${description}. ${historicalInfo}`;
+      
+      const { data, error } = await supabase.functions.invoke('text-to-speech', {
+        body: { text: textContent, language }
+      });
 
-      if (audioUrl) {
-        // Play pre-recorded audio
-        const audio = new Audio(audioUrl);
-        await audio.play();
-        setAudioText((prev) => ({ ...prev, [language]: "Playing pre-recorded audio." }));
-        toast({
-          title: "Audio started",
-          description: `Playing pre-recorded audio in ${language.charAt(0).toUpperCase() + language.slice(1)}`,
-        });
-      } else {
-        // Fallback to TTS
-        const description = getDescriptionByLanguage(language);
-        const historicalInfo = getHistoricalInfoByLanguage(language);
-        let textToSpeak = description;
-        if (historicalInfo) {
-          textToSpeak += `. ${historicalInfo}`;
-        }
+      if (error) throw error;
 
-        if (!textToSpeak) {
-          throw new Error("No content available for audio generation.");
-        }
+      setAudioText((prev) => ({ ...prev, [language]: data.translatedText }));
+      
+      // Use Web Speech API to read the text
+      const utterance = new SpeechSynthesisUtterance(data.translatedText);
+      utterance.lang = language === 'telugu' ? 'te-IN' : language === 'hindi' ? 'hi-IN' : 'en-US';
+      speechSynthesis.speak(utterance);
 
-        const { data, error } = await supabase.functions.invoke("text-to-speech", {
-          body: { text: textToSpeak, language },
-        });
-        if (error) throw error;
-
-        setAudioText((prev) => ({ ...prev, [language]: data.translatedText }));
-
-        const utterance = new SpeechSynthesisUtterance(data.translatedText);
-        utterance.lang = language === "telugu" ? "te-IN" : language === "hindi" ? "hi-IN" : "en-US";
-        utterance.rate = 0.9;
-        speechSynthesis.speak(utterance);
-        toast({
-          title: "Audio started",
-          description: `Playing generated audio in ${language.charAt(0).toUpperCase() + language.slice(1)}`,
-        });
-      }
-    } catch (error: any) {
-      console.error("Audio error:", error);
       toast({
-        title: "Error with audio",
-        description: error.message || "Failed to play audio",
+        title: "Audio started",
+        description: `Playing in ${language.charAt(0).toUpperCase() + language.slice(1)}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error generating audio",
+        description: error.message,
         variant: "destructive",
       });
     } finally {
@@ -196,6 +185,7 @@ const MonumentDetails = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
       <Navigation />
+      
       <main className="container mx-auto px-4 py-8">
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
@@ -213,17 +203,14 @@ const MonumentDetails = () => {
                     alt={monument.name}
                     className="w-full h-full object-cover"
                   />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-muted">
-                    <p className="text-muted-foreground">No media available</p>
-                  </div>
-                )}
+                ) : null}
                 {monument.category && (
                   <Badge className="absolute top-4 right-4 bg-primary text-primary-foreground shadow-soft">
                     {monument.category}
                   </Badge>
                 )}
               </div>
+              
               <CardHeader>
                 <CardTitle className="text-3xl font-bold">{monument.name}</CardTitle>
                 <CardDescription className="flex items-center gap-2 text-base">
@@ -231,35 +218,38 @@ const MonumentDetails = () => {
                   {monument.location}
                 </CardDescription>
               </CardHeader>
+
               <CardContent className="space-y-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Globe className="w-4 h-4 text-muted-foreground" />
-                  <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
-                    <SelectTrigger className="w-40">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="english">English</SelectItem>
-                      <SelectItem value="hindi">हिंदी (Hindi)</SelectItem>
-                      <SelectItem value="telugu">తెలుగు (Telugu)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
                 <div>
                   <h3 className="text-lg font-semibold mb-2">Description</h3>
-                  <p className="text-muted-foreground whitespace-pre-line">{getDescriptionByLanguage(selectedLanguage)}</p>
+                  <p className="text-muted-foreground">{getDescriptionByLanguage(selectedLanguage)}</p>
                 </div>
+
                 {getHistoricalInfoByLanguage(selectedLanguage) && (
                   <div>
                     <h3 className="text-lg font-semibold mb-2">Historical Information</h3>
-                    <p className="text-muted-foreground whitespace-pre-line">{getHistoricalInfoByLanguage(selectedLanguage)}</p>
+                    <p className="text-muted-foreground">{getHistoricalInfoByLanguage(selectedLanguage)}</p>
                   </div>
                 )}
+
                 <div>
                   <h3 className="text-lg font-semibold mb-3">Audio Guide</h3>
                   <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Globe className="w-4 h-4 text-muted-foreground" />
+                      <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="english">English</SelectItem>
+                          <SelectItem value="hindi">Hindi</SelectItem>
+                          <SelectItem value="telugu">Telugu</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <Button
-                      onClick={() => handleAudioPlayback(selectedLanguage)}
+                      onClick={() => handleTextToSpeech(selectedLanguage)}
                       disabled={audioLoading !== null}
                       className="gap-2 bg-secondary hover:bg-secondary/90"
                     >
@@ -272,10 +262,10 @@ const MonumentDetails = () => {
                     </Button>
                     {audioText[selectedLanguage] && (
                       <div className="mt-4 p-4 bg-muted rounded-lg">
-                        <h4 className="text-sm font-medium mb-2">
-                          Audio Content ({selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)}):
-                        </h4>
-                        <p className="text-sm text-muted-foreground">{audioText[selectedLanguage]}</p>
+                        <h4 className="text-sm font-medium mb-2">Translated Text ({selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)}):</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {audioText[selectedLanguage]}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -283,6 +273,7 @@ const MonumentDetails = () => {
               </CardContent>
             </Card>
           </div>
+
           <div className="space-y-6">
             <Card className="shadow-elegant">
               <CardHeader>
@@ -301,6 +292,7 @@ const MonumentDetails = () => {
                       Hotels
                     </TabsTrigger>
                   </TabsList>
+
                   <TabsContent value="places" className="space-y-4 mt-4">
                     {nearbyPlaces.length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-4">
@@ -320,7 +312,9 @@ const MonumentDetails = () => {
                           </CardHeader>
                           {place.description && (
                             <CardContent className="pt-0">
-                              <p className="text-sm text-muted-foreground">{place.description}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {place.description}
+                              </p>
                               {place.rating && (
                                 <div className="flex items-center gap-1 mt-2">
                                   <Star className="w-4 h-4 fill-primary text-primary" />
@@ -333,6 +327,7 @@ const MonumentDetails = () => {
                       ))
                     )}
                   </TabsContent>
+
                   <TabsContent value="hotels" className="space-y-4 mt-4">
                     {hotels.length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-4">
@@ -352,7 +347,9 @@ const MonumentDetails = () => {
                           </CardHeader>
                           <CardContent className="pt-0">
                             {hotel.description && (
-                              <p className="text-sm text-muted-foreground mb-2">{hotel.description}</p>
+                              <p className="text-sm text-muted-foreground mb-2">
+                                {hotel.description}
+                              </p>
                             )}
                             {hotel.rating && (
                               <div className="flex items-center gap-1">
