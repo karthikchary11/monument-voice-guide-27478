@@ -90,11 +90,16 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           description: string
+          description_english: string | null
+          description_hindi: string | null
+          description_telugu: string | null
           historical_info: string | null
+          historical_info_english: string | null
+          historical_info_hindi: string | null
+          historical_info_telugu: string | null
           id: string
           image_url: string | null
           location: string
-          model_url: string | null
           name: string
           updated_at: string | null
         }
@@ -106,11 +111,16 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           description: string
+          description_english?: string | null
+          description_hindi?: string | null
+          description_telugu?: string | null
           historical_info?: string | null
+          historical_info_english?: string | null
+          historical_info_hindi?: string | null
+          historical_info_telugu?: string | null
           id?: string
           image_url?: string | null
           location: string
-          model_url?: string | null
           name: string
           updated_at?: string | null
         }
@@ -122,11 +132,16 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           description?: string
+          description_english?: string | null
+          description_hindi?: string | null
+          description_telugu?: string | null
           historical_info?: string | null
+          historical_info_english?: string | null
+          historical_info_hindi?: string | null
+          historical_info_telugu?: string | null
           id?: string
           image_url?: string | null
           location?: string
-          model_url?: string | null
           name?: string
           updated_at?: string | null
         }
@@ -138,7 +153,6 @@ export type Database = {
           email: string
           full_name: string
           id: string
-          role: string | null
           updated_at: string | null
         }
         Insert: {
@@ -146,7 +160,6 @@ export type Database = {
           email: string
           full_name: string
           id: string
-          role?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -154,7 +167,6 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
-          role?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -163,6 +175,7 @@ export type Database = {
         Row: {
           contact: string | null
           created_at: string | null
+          created_by: string | null
           description: string | null
           distance: string | null
           id: string
@@ -174,6 +187,7 @@ export type Database = {
         Insert: {
           contact?: string | null
           created_at?: string | null
+          created_by?: string | null
           description?: string | null
           distance?: string | null
           id?: string
@@ -185,6 +199,7 @@ export type Database = {
         Update: {
           contact?: string | null
           created_at?: string | null
+          created_by?: string | null
           description?: string | null
           distance?: string | null
           id?: string
