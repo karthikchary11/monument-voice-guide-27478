@@ -10,17 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Save, 
-  X, 
-  Loader2, 
-  Eye,
-  Globe,
-  Upload
-} from "lucide-react";
+import { Plus, Edit, Trash2, Save, X, Loader2, Eye, Globe, Upload } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import ModelViewer from "@/components/ModelViewer";
 
@@ -47,19 +37,6 @@ interface Monument {
   updated_at: string;
 }
 
-interface Recommendation {
-  id?: string;
-  monument_id?: string;
-  type: string;
-  name: string;
-  description: string;
-  distance: string;
-  rating: number | string;
-  contact: string;
-  created_at?: string;
-  created_by?: string;
-}
-
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -69,7 +46,6 @@ const AdminDashboard = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Form state
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -86,12 +62,8 @@ const AdminDashboard = () => {
     model_url: "",
     audio_english_url: "",
     audio_hindi_url: "",
-    audio_telugu_url: ""
+    audio_telugu_url: "",
   });
-
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([
-    { type: "nearby_place", name: "", description: "", distance: "", rating: "", contact: "" }
-  ]);
 
   useEffect(() => {
     const guardAndLoad = async () => {
@@ -101,7 +73,6 @@ const AdminDashboard = () => {
         return;
       }
 
-      // fetch profile role
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("role")
@@ -134,7 +105,7 @@ const AdminDashboard = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setMonuments((data || []) as Monument[]);
+      setMonuments(data || []);
     } catch (error: any) {
       toast({
         title: "Error loading monuments",
@@ -165,14 +136,11 @@ const AdminDashboard = () => {
       model_url: "",
       audio_english_url: "",
       audio_hindi_url: "",
-      audio_telugu_url: ""
+      audio_telugu_url: "",
     });
-    setRecommendations([
-      { type: "nearby_place", name: "", description: "", distance: "", rating: "", contact: "" }
-    ]);
   };
 
-  const handleEdit = async (monument: Monument) => {
+  const handleEdit = (monument: Monument) => {
     setEditingMonument(monument);
     setIsCreating(false);
     setFormData({
@@ -191,29 +159,15 @@ const AdminDashboard = () => {
       model_url: monument.model_url || "",
       audio_english_url: monument.audio_english_url || "",
       audio_hindi_url: monument.audio_hindi_url || "",
-      audio_telugu_url: monument.audio_telugu_url || ""
+      audio_telugu_url: monument.audio_telugu_url || "",
     });
-
-    // Fetch existing recommendations
-    const { data: existingRecs } = await supabase
-      .from("recommendations")
-      .select("*")
-      .eq("monument_id", monument.id);
-    
-    if (existingRecs && existingRecs.length > 0) {
-      setRecommendations(existingRecs);
-    } else {
-      setRecommendations([
-        { type: "nearby_place", name: "", description: "", distance: "", rating: "", contact: "" }
-      ]);
-    }
   };
 
   const handleSave = async () => {
-    if (!formData.name || !formData.description || !formData.location) {
+    if (!formData.name || !formData.description_english || !formData.location) {
       toast({
         title: "Validation Error",
-        description: "Name, description, and location are required",
+        description: "Name, English description, and location are required",
         variant: "destructive",
       });
       return;
@@ -226,7 +180,7 @@ const AdminDashboard = () => {
 
       const monumentData = {
         name: formData.name,
-        description: formData.description,
+        description: formData.description || formData.description_english,
         description_english: formData.description_english || null,
         description_hindi: formData.description_hindi || null,
         description_telugu: formData.description_telugu || null,
@@ -242,21 +196,12 @@ const AdminDashboard = () => {
         audio_hindi_url: formData.audio_hindi_url || null,
         audio_telugu_url: formData.audio_telugu_url || null,
         created_by: user.id,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
-      let monumentId: string;
-
       if (isCreating) {
-        const { data, error } = await supabase
-          .from("monuments")
-          .insert([monumentData])
-          .select()
-          .single();
-
+        const { error } = await supabase.from("monuments").insert([monumentData]);
         if (error) throw error;
-        monumentId = data.id;
-        
         toast({
           title: "Success",
           description: "Monument created successfully",
@@ -266,53 +211,11 @@ const AdminDashboard = () => {
           .from("monuments")
           .update(monumentData)
           .eq("id", editingMonument.id);
-
         if (error) throw error;
-        monumentId = editingMonument.id;
-
-        // Delete existing recommendations
-        await supabase
-          .from("recommendations")
-          .delete()
-          .eq("monument_id", editingMonument.id);
-        
         toast({
           title: "Success",
           description: "Monument updated successfully",
         });
-      } else {
-        return;
-      }
-
-      // Save recommendations
-      const validRecommendations = recommendations.filter(
-        rec => rec.name.trim() !== ""
-      );
-
-      if (validRecommendations.length > 0) {
-        const recsToInsert = validRecommendations.map(rec => ({
-          monument_id: monumentId,
-          type: rec.type,
-          name: rec.name,
-          description: rec.description || null,
-          distance: rec.distance || null,
-          rating: rec.rating ? parseFloat(rec.rating.toString()) : null,
-          contact: rec.contact || null,
-          created_by: user.id
-        }));
-
-        const { error: recError } = await supabase
-          .from("recommendations")
-          .insert(recsToInsert);
-
-        if (recError) {
-          console.error("Error saving recommendations:", recError);
-          toast({
-            title: "Warning",
-            description: "Monument saved but recommendations failed to save",
-            variant: "destructive",
-          });
-        }
       }
 
       setEditingMonument(null);
@@ -333,18 +236,12 @@ const AdminDashboard = () => {
     if (!confirm("Are you sure you want to delete this monument?")) return;
 
     try {
-      const { error } = await supabase
-        .from("monuments")
-        .delete()
-        .eq("id", id);
-
+      const { error } = await supabase.from("monuments").delete().eq("id", id);
       if (error) throw error;
-      
       toast({
         title: "Success",
         description: "Monument deleted successfully",
       });
-      
       fetchMonuments();
     } catch (error: any) {
       toast({
@@ -378,7 +275,6 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
       <Navigation />
-      
       <main className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -401,14 +297,11 @@ const AdminDashboard = () => {
             {isCreating || editingMonument ? (
               <Card className="shadow-elegant">
                 <CardHeader>
-                  <CardTitle>
-                    {isCreating ? "Create New Monument" : "Edit Monument"}
-                  </CardTitle>
+                  <CardTitle>{isCreating ? "Create New Monument" : "Edit Monument"}</CardTitle>
                   <CardDescription>
-                    {isCreating 
-                      ? "Add a new monument with 3D model URL" 
-                      : "Update monument information and 3D model URL"
-                    }
+                    {isCreating
+                      ? "Add a new monument with multi-language details and 3D model URL"
+                      : "Update monument information with multi-language details and 3D model URL"}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -433,78 +326,66 @@ const AdminDashboard = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Descriptions (Multilingual)</h3>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="description_english">English Description *</Label>
-                      <Textarea
-                        id="description_english"
-                        value={formData.description_english}
-                        onChange={(e) => setFormData({ ...formData, description_english: e.target.value })}
-                        placeholder="Brief description in English"
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="description_hindi">Hindi Description</Label>
-                      <Textarea
-                        id="description_hindi"
-                        value={formData.description_hindi}
-                        onChange={(e) => setFormData({ ...formData, description_hindi: e.target.value })}
-                        placeholder="हिंदी में विवरण"
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="description_telugu">Telugu Description</Label>
-                      <Textarea
-                        id="description_telugu"
-                        value={formData.description_telugu}
-                        onChange={(e) => setFormData({ ...formData, description_telugu: e.target.value })}
-                        placeholder="తెలుగులో వివరణ"
-                        rows={3}
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description_english">Description (English) *</Label>
+                    <Textarea
+                      id="description_english"
+                      value={formData.description_english}
+                      onChange={(e) => setFormData({ ...formData, description_english: e.target.value })}
+                      placeholder="Description in English"
+                      rows={3}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description_hindi">Description (Hindi)</Label>
+                    <Textarea
+                      id="description_hindi"
+                      value={formData.description_hindi}
+                      onChange={(e) => setFormData({ ...formData, description_hindi: e.target.value })}
+                      placeholder="Description in Hindi"
+                      rows={3}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description_telugu">Description (Telugu)</Label>
+                    <Textarea
+                      id="description_telugu"
+                      value={formData.description_telugu}
+                      onChange={(e) => setFormData({ ...formData, description_telugu: e.target.value })}
+                      placeholder="Description in Telugu"
+                      rows={3}
+                    />
                   </div>
 
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Historical Information (Multilingual)</h3>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="historical_info_english">English Historical Info</Label>
-                      <Textarea
-                        id="historical_info_english"
-                        value={formData.historical_info_english}
-                        onChange={(e) => setFormData({ ...formData, historical_info_english: e.target.value })}
-                        placeholder="Historical background in English"
-                        rows={4}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="historical_info_hindi">Hindi Historical Info</Label>
-                      <Textarea
-                        id="historical_info_hindi"
-                        value={formData.historical_info_hindi}
-                        onChange={(e) => setFormData({ ...formData, historical_info_hindi: e.target.value })}
-                        placeholder="हिंदी में ऐतिहासिक जानकारी"
-                        rows={4}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="historical_info_telugu">Telugu Historical Info</Label>
-                      <Textarea
-                        id="historical_info_telugu"
-                        value={formData.historical_info_telugu}
-                        onChange={(e) => setFormData({ ...formData, historical_info_telugu: e.target.value })}
-                        placeholder="తెలుగులో చారిత్రక సమాచారం"
-                        rows={4}
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="historical_info_english">Historical Information (English)</Label>
+                    <Textarea
+                      id="historical_info_english"
+                      value={formData.historical_info_english}
+                      onChange={(e) => setFormData({ ...formData, historical_info_english: e.target.value })}
+                      placeholder="Historical information in English"
+                      rows={4}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="historical_info_hindi">Historical Information (Hindi)</Label>
+                    <Textarea
+                      id="historical_info_hindi"
+                      value={formData.historical_info_hindi}
+                      onChange={(e) => setFormData({ ...formData, historical_info_hindi: e.target.value })}
+                      placeholder="Historical information in Hindi"
+                      rows={4}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="historical_info_telugu">Historical Information (Telugu)</Label>
+                    <Textarea
+                      id="historical_info_telugu"
+                      value={formData.historical_info_telugu}
+                      onChange={(e) => setFormData({ ...formData, historical_info_telugu: e.target.value })}
+                      placeholder="Historical information in Telugu"
+                      rows={4}
+                    />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -537,7 +418,7 @@ const AdminDashboard = () => {
                   <div className="space-y-2">
                     <Label htmlFor="model_url" className="flex items-center gap-2">
                       <Globe className="w-4 h-4" />
-                      3D Model URL (Sketchfab Embed URL) *
+                      3D Model URL (Sketchfab Embed URL)
                     </Label>
                     <Input
                       id="model_url"
@@ -546,7 +427,7 @@ const AdminDashboard = () => {
                       placeholder="https://sketchfab.com/models/[model-id]/embed?autostart=1&internal=1&tracking=0&ui_infos=0&ui_snapshots=1&ui_stop=0&ui_watermark=0"
                     />
                     <p className="text-sm text-muted-foreground">
-                      Enter the Sketchfab embed URL for the 3D model. This will replace the need for large GLB files.
+                      Enter the Sketchfab embed URL for the 3D model.
                     </p>
                   </div>
 
@@ -563,127 +444,34 @@ const AdminDashboard = () => {
                     </div>
                   )}
 
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold">Nearby Places & Hotels</h3>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setRecommendations([...recommendations, { type: "nearby_place", name: "", description: "", distance: "", rating: "", contact: "" }])}
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Place
-                      </Button>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="audio_english_url">English Audio URL</Label>
+                      <Input
+                        id="audio_english_url"
+                        value={formData.audio_english_url}
+                        onChange={(e) => setFormData({ ...formData, audio_english_url: e.target.value })}
+                        placeholder="https://example.com/audio-en.mp3"
+                      />
                     </div>
-
-                    {recommendations.map((rec, index) => (
-                      <Card key={index} className="p-4">
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <Select 
-                              value={rec.type} 
-                              onValueChange={(value) => {
-                                const newRecs = [...recommendations];
-                                newRecs[index].type = value;
-                                setRecommendations(newRecs);
-                              }}
-                            >
-                              <SelectTrigger className="w-40">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="nearby_place">Nearby Place</SelectItem>
-                                <SelectItem value="hotel">Hotel</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                const newRecs = recommendations.filter((_, i) => i !== index);
-                                setRecommendations(newRecs.length > 0 ? newRecs : [{ type: "nearby_place", name: "", description: "", distance: "", rating: "", contact: "" }]);
-                              }}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Name *</Label>
-                              <Input
-                                value={rec.name}
-                                onChange={(e) => {
-                                  const newRecs = [...recommendations];
-                                  newRecs[index].name = e.target.value;
-                                  setRecommendations(newRecs);
-                                }}
-                                placeholder="Place/Hotel name"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Distance</Label>
-                              <Input
-                                value={rec.distance}
-                                onChange={(e) => {
-                                  const newRecs = [...recommendations];
-                                  newRecs[index].distance = e.target.value;
-                                  setRecommendations(newRecs);
-                                }}
-                                placeholder="e.g., 2 km"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label>Description</Label>
-                            <Textarea
-                              value={rec.description}
-                              onChange={(e) => {
-                                const newRecs = [...recommendations];
-                                newRecs[index].description = e.target.value;
-                                setRecommendations(newRecs);
-                              }}
-                              placeholder="Brief description"
-                              rows={2}
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Rating (1-5)</Label>
-                              <Input
-                                type="number"
-                                min="1"
-                                max="5"
-                                step="0.1"
-                                value={rec.rating}
-                                onChange={(e) => {
-                                  const newRecs = [...recommendations];
-                                  newRecs[index].rating = e.target.value;
-                                  setRecommendations(newRecs);
-                                }}
-                                placeholder="4.5"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Contact</Label>
-                              <Input
-                                value={rec.contact}
-                                onChange={(e) => {
-                                  const newRecs = [...recommendations];
-                                  newRecs[index].contact = e.target.value;
-                                  setRecommendations(newRecs);
-                                }}
-                                placeholder="Phone/Email"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
+                    <div className="space-y-2">
+                      <Label htmlFor="audio_hindi_url">Hindi Audio URL</Label>
+                      <Input
+                        id="audio_hindi_url"
+                        value={formData.audio_hindi_url}
+                        onChange={(e) => setFormData({ ...formData, audio_hindi_url: e.target.value })}
+                        placeholder="https://example.com/audio-hi.mp3"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="audio_telugu_url">Telugu Audio URL</Label>
+                      <Input
+                        id="audio_telugu_url"
+                        value={formData.audio_telugu_url}
+                        onChange={(e) => setFormData({ ...formData, audio_telugu_url: e.target.value })}
+                        placeholder="https://example.com/audio-te.mp3"
+                      />
+                    </div>
                   </div>
 
                   <div className="flex gap-2">
@@ -754,13 +542,11 @@ const AdminDashboard = () => {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-muted-foreground mb-4">{monument.description}</p>
+                      <p className="text-muted-foreground mb-4">{monument.description_english || monument.description}</p>
                       {monument.model_url && (
                         <div className="space-y-2">
                           <Label className="text-sm font-medium">3D Model URL:</Label>
-                          <p className="text-sm text-muted-foreground break-all">
-                            {monument.model_url}
-                          </p>
+                          <p className="text-sm text-muted-foreground break-all">{monument.model_url}</p>
                         </div>
                       )}
                     </CardContent>
@@ -777,9 +563,7 @@ const AdminDashboard = () => {
                   <Upload className="w-5 h-5" />
                   3D Model Management
                 </CardTitle>
-                <CardDescription>
-                  Manage 3D models using Sketchfab embed URLs instead of large GLB files
-                </CardDescription>
+                <CardDescription>Manage 3D models using Sketchfab embed URLs</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid gap-4">
@@ -793,7 +577,6 @@ const AdminDashboard = () => {
                       <li>• Professional 3D model hosting via Sketchfab</li>
                     </ul>
                   </div>
-                  
                   <div className="p-4 border rounded-lg">
                     <h3 className="font-semibold mb-2">How to get Sketchfab Embed URL:</h3>
                     <ol className="text-sm text-muted-foreground space-y-1">
