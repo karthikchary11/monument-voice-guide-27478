@@ -210,14 +210,17 @@ const AdminDashboard = () => {
   };
 
   const handleSave = async () => {
-    if (!formData.name || !formData.description || !formData.location) {
+    if (!formData.name || !formData.location) {
       toast({
         title: "Validation Error",
-        description: "Name, description, and location are required",
+        description: "Name and location are required",
         variant: "destructive",
       });
       return;
     }
+    
+    // Set description_english as fallback for description if description is empty
+    const descriptionValue = formData.description_english || formData.description || "";
 
     setSaving(true);
     try {
@@ -226,7 +229,7 @@ const AdminDashboard = () => {
 
       const monumentData = {
         name: formData.name,
-        description: formData.description,
+        description: descriptionValue,
         description_english: formData.description_english || null,
         description_hindi: formData.description_hindi || null,
         description_telugu: formData.description_telugu || null,

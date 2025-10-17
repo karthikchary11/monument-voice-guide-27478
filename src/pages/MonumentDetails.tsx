@@ -140,17 +140,38 @@ const MonumentDetails = () => {
       const historicalInfo = getHistoricalInfoByLanguage(language);
       const textContent = `${monument.name}. ${description}. ${historicalInfo}`;
       
+      console.log('Calling text-to-speech with:', { text: textContent, language });
+      
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: { text: textContent, language }
       });
 
-      if (error) throw error;
+      console.log('Text-to-speech response:', { data, error });
+
+      if (error) {
+        console.error('Text-to-speech error:', error);
+        throw error;
+      }
+
+      if (!data || !data.translatedText) {
+        throw new Error('No translated text received from server');
+      }
 
       setAudioText((prev) => ({ ...prev, [language]: data.translatedText }));
       
       // Use Web Speech API to read the text
       const utterance = new SpeechSynthesisUtterance(data.translatedText);
       utterance.lang = language === 'telugu' ? 'te-IN' : language === 'hindi' ? 'hi-IN' : 'en-US';
+      utterance.rate = 0.9;
+      
+      utterance.onend = () => {
+        console.log('Speech synthesis finished');
+      };
+      
+      utterance.onerror = (event) => {
+        console.error('Speech synthesis error:', event);
+      };
+      
       speechSynthesis.speak(utterance);
 
       toast({
@@ -158,9 +179,10 @@ const MonumentDetails = () => {
         description: `Playing in ${language.charAt(0).toUpperCase() + language.slice(1)}`,
       });
     } catch (error: any) {
+      console.error('Error in handleTextToSpeech:', error);
       toast({
         title: "Error generating audio",
-        description: error.message,
+        description: error.message || "Failed to generate audio",
         variant: "destructive",
       });
     } finally {
