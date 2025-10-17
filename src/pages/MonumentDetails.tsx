@@ -142,25 +142,26 @@ const MonumentDetails = () => {
       
       console.log('Calling text-to-speech with:', { text: textContent, language });
       
-      const { data, error } = await supabase.functions.invoke('text-to-speech', {
-        body: { text: textContent, language }
+      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/text-to-speech`;
+      const resp = await fetch(CHAT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ text: textContent, language }),
       });
 
-      console.log('Text-to-speech response:', { data, error });
-
-      if (error) {
-        console.error('Text-to-speech error:', error);
-        throw error;
+      if (!resp.ok) {
+        const errText = await resp.text();
+        throw new Error(`TTS failed (${resp.status}): ${errText}`);
       }
 
-      if (!data || !data.translatedText) {
-        throw new Error('No translated text received from server');
-      }
-
-      setAudioText((prev) => ({ ...prev, [language]: data.translatedText }));
+      const { translatedText } = await resp.json();
+      setAudioText((prev) => ({ ...prev, [language]: translatedText }));
       
       // Use Web Speech API to read the text
-      const utterance = new SpeechSynthesisUtterance(data.translatedText);
+      const utterance = new SpeechSynthesisUtterance(translatedText);
       utterance.lang = language === 'telugu' ? 'te-IN' : language === 'hindi' ? 'hi-IN' : 'en-US';
       utterance.rate = 0.9;
       
